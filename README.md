@@ -1,2 +1,2 @@
 # arduinomultiplexer
-Multiplexer based on the Arduino Mega
+Build an NMEA Multiplexer with the Arduino Mega
