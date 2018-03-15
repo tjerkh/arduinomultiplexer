@@ -20,6 +20,15 @@ SoftwareSerial ais(10, 11); // RX, TX
 // Arduino Mega      46        48       44, 45
 AltSoftSerial mar; 
 
+const int debugButton = 2; 
+const int espLedWrite = 3;
+const int aisLedWrite = 5;
+const int gpsLedWrite = 6;
+const int wndLedWrite = 7;
+const int aisLedRead  = 8;
+const int gpsLedRead  = 9;
+const int wndLedWrite = 7;
+
 const int chipSelect = 4;
 char filename[16];
 
@@ -39,6 +48,11 @@ void setup() {
   ais.begin(38400);
   mar.begin(4800);
 
+  pinMode(debugButton, INPUT);
+  pinMode(espLedWrite, OUTPUT);
+  pinMode(aisLedWrite, OUTPUT);
+  pinMode(gpsLedWrite, OUTPUT);
+  pinMode(wndLedWrite, OUTPUT);
   writeToLog("Start Multiplexer");
 
   initSdCard();
@@ -60,12 +74,14 @@ void loop() {
 
   if (wnd.available())
   {
-    processWndRead(wnd.read());
+    processWndRead();
   }
 }
 
-void processWndRead(char c)
+void processWndRead()
 { 
+  digitalWrite(ledPin, HIGH);
+  char c = wnd.read();
   wndBuffer[gpsBufferLength] = c;
   wndBufferLength = wndBufferLength + 1;
   //if (c == 0x0D || c == 0x0A)
@@ -112,11 +128,14 @@ void writeToLog(String logMessage)
     dbg.println(logMessage);
   #endif
 
-  File logFile = SD.open(filename, FILE_WRITE);
-  logFile.print(millis());
-  logFile.print("\t");
-  logFile.println(logMessage);
-  logFile.close();
+  if(digitalRead(debugButton) == HIGH)
+  {
+    File logFile = SD.open(filename, FILE_WRITE);
+    logFile.print(millis());
+    logFile.print("\t");
+    logFile.println(logMessage);
+    logFile.close();
+  }
 }
 
 void writeToLog(char source[3], char logBuffer[100], int logBufferLength)
