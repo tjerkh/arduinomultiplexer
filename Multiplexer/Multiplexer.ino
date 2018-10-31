@@ -20,14 +20,13 @@ SoftwareSerial ais(10, 11); // RX, TX
 // Arduino Mega      46        48       44, 45
 AltSoftSerial mar; 
 
-const int debugButton = 2; 
-const int espLedWrite = 3;
-const int aisLedWrite = 5;
-const int gpsLedWrite = 6;
-const int wndLedWrite = 7;
-const int aisLedRead  = 8;
-const int gpsLedRead  = 9;
-const int wndLedWrite = 7;
+const int debugButton = 22; 
+const int logLedWrite = 23;
+const int aisLedRead  = 24;
+const int gpsLedRead  = 26;
+const int wndLedRead  = 28;
+const int marLedWrite = 31;
+const int espLedWrite = 33;
 
 const int chipSelect = 4;
 char filename[16];
@@ -49,13 +48,20 @@ void setup() {
   mar.begin(4800);
 
   pinMode(debugButton, INPUT);
+  pinMode(logLedWrite, OUTPUT);
+  pinMode(aisLedRead, OUTPUT);
+  pinMode(gpsLedRead, OUTPUT);
+  pinMode(wndLedRead, OUTPUT);
+  pinMode(marLedWrite, OUTPUT);
   pinMode(espLedWrite, OUTPUT);
-  pinMode(aisLedWrite, OUTPUT);
-  pinMode(gpsLedWrite, OUTPUT);
-  pinMode(wndLedWrite, OUTPUT);
+
+  toggleAllLeds(HIGH);
+  
   writeToLog("Start Multiplexer");
 
   initSdCard();
+
+  toggleAllLeds(LOW);
 }
 
 void loop() {
@@ -80,28 +86,45 @@ void loop() {
 
 void processWndRead()
 { 
-  digitalWrite(ledPin, HIGH);
+  digitalWrite(wndLedRead, HIGH);
   char c = wnd.read();
   wndBuffer[gpsBufferLength] = c;
   wndBufferLength = wndBufferLength + 1;
+  digitalWrite(wndLedRead, LOW);
   //if (c == 0x0D || c == 0x0A)
   if (c == 0x0A)
   { 
-    esp.write(wndBuffer,wndBufferLength);
+    espWrite(wndBuffer, wndBufferLength);
     writeToLog("WND", wndBuffer, wndBufferLength);
     wndBufferLength = 0;
   }
 }
 
+void espWrite(char espBuffer[100], int espBufferLength)
+{
+    digitalWrite(espLedWrite, HIGH);
+    esp.write(espBuffer,espBufferLength);
+    digitalWrite(espLedWrite, LOW);
+}
+
+void marWrite(char marBuffer[100], int marBufferLength)
+{
+    digitalWrite(marLedWrite, HIGH);
+    esp.write(marBuffer,marBufferLength);
+    digitalWrite(marLedWrite, LOW);
+}
+
 void processGpsRead(char c)
 { 
+  digitalWrite(gpsLedRead, HIGH);
   gpsBuffer[gpsBufferLength] = c;
   gpsBufferLength = gpsBufferLength + 1;
+  digitalWrite(gpsLedRead, LOW);
   //if (c == 0x0D || c == 0x0A)
   if (c == 0x0A)
   { 
-    esp.write(gpsBuffer,gpsBufferLength);
-    mar.write(gpsBuffer,gpsBufferLength);
+    espWrite(gpsBuffer, gpsBufferLength);
+    marWrite(gpsBuffer, gpsBufferLength);
     writeToLog("GPS", gpsBuffer, gpsBufferLength);
     gpsBufferLength = 0;
   }
@@ -114,7 +137,7 @@ void processAisRead(char c)
   //if (c == 0x0D || c == 0x0A)
   if (c == 0x0A)
   { 
-    esp.write(aisBuffer,aisBufferLength);
+    espWrite(aisBuffer, aisBufferLength);
     writeToLog("AIS", aisBuffer, aisBufferLength);
     aisBufferLength = 0;
   }
@@ -130,11 +153,13 @@ void writeToLog(String logMessage)
 
   if(digitalRead(debugButton) == HIGH)
   {
+    digitalWrite(logLedWrite, HIGH);
     File logFile = SD.open(filename, FILE_WRITE);
     logFile.print(millis());
     logFile.print("\t");
     logFile.println(logMessage);
     logFile.close();
+    digitalWrite(logLedWrite, LOW);
   }
 }
 
@@ -148,13 +173,18 @@ void writeToLog(char source[3], char logBuffer[100], int logBufferLength)
     dbg.write(logBuffer,logBufferLength);
   #endif
 
-  File logFile = SD.open(filename, FILE_WRITE);
-  logFile.print(millis());
-  logFile.print("\t");
-  logFile.write(source);
-  logFile.print("\t");
-  logFile.write(logBuffer,logBufferLength);
-  logFile.close();
+  if(digitalRead(debugButton) == HIGH)
+  {
+    digitalWrite(logLedWrite, HIGH);
+    File logFile = SD.open(filename, FILE_WRITE);
+    logFile.print(millis());
+    logFile.print("\t");
+    logFile.write(source);
+    logFile.print("\t");
+    logFile.write(logBuffer,logBufferLength);
+    logFile.close();
+    digitalWrite(logLedWrite, LOW);
+  }
 }
 
 void initSdCard() {
@@ -169,4 +199,14 @@ void initSdCard() {
   writeToLog(filename);
   }
 }
+
+void toggleAllLeds(boolean state){
+  digitalWrite(logLedWrite, state);
+  digitalWrite(aisLedRead, state);
+  digitalWrite(gpsLedRead, state);
+  digitalWrite(wndLedRead, state);
+  digitalWrite(marLedWrite, state);
+  digitalWrite(espLedWrite, state);
+}
+
 
